@@ -30,9 +30,14 @@ public class MainActivity extends AppCompatActivity {
             int numVariables;
             try {
                 numVariables = Integer.parseInt(etNumVariables.getText().toString());
+                if (numVariables>7){
+                    numVariables=7;
+                    Toast.makeText(this, "Numero de variables LIMITADO a 7"/* a peticion del profesor para evitar desbordamiento de memoria*/, Toast.LENGTH_SHORT).show();
+                    etNumVariables.setText("7");
+                }
             } catch (NumberFormatException e) {
                 numVariables = 3; //default
-                Toast.makeText(this, "Número de variables no válido, se usará el valor por defecto (3)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Numero de variables no válido, se usará el valor por defecto (3)", Toast.LENGTH_SHORT).show();
             }
             int numRows = (int) Math.pow(2, numVariables);
             tableLayout.removeAllViews();
