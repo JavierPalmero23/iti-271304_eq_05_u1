@@ -32,7 +32,6 @@ public class MainActivity extends AppCompatActivity {
         TableLayout tableLayout = findViewById(R.id.tableLayout);
         Button btnGenerate = findViewById(R.id.btnGenerate);
         EditText etNumVariables = findViewById(R.id.etNumVariables);
-
         btnGenerate.setOnClickListener(v -> {
             int numVariables;
             try {
@@ -54,6 +53,11 @@ public class MainActivity extends AppCompatActivity {
 
             int[][] truthTable = generateTruthTable(numVariables);
 
+            // Prueba para verificar si el scroll funciona correctamente con 7 variables
+            if (numVariables == 7) {
+                Toast.makeText(this, "Desplazamiento habilitado para 7 variables", Toast.LENGTH_SHORT).show();
+            }
+
             // Crear filas y columnas
             for (int i = 0; i < numRows; i++) {
                 TableRow tableRow = new TableRow(this);
@@ -70,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
                 RadioGroup radioGroup = new RadioGroup(this);
                 radioGroup.setOrientation(RadioGroup.HORIZONTAL);
 
-                // Los Ids únicos evitan que se seleccionen varios RadioButtons a la vez
                 RadioButton radioButton0 = new RadioButton(this);
                 radioButton0.setText("0");
                 radioButton0.setId(View.generateViewId());
@@ -94,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 tableLayout.addView(tableRow);
             }
         });
+
         Button btnCalcular = findViewById(R.id.btnCalcular);
 
         btnCalcular.setOnClickListener(v -> {
