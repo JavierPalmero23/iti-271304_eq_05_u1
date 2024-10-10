@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import android.util.Log;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TableLayout;
@@ -95,38 +96,33 @@ public class MainActivity extends AppCompatActivity {
         Button btnCalcular = findViewById(R.id.btnCalcular);
 
         btnCalcular.setOnClickListener(v -> {
+            int numVariables = Integer.parseInt(etNumVariables.getText().toString());
+
             // Dimensiones de la matriz
             int numRows = radioGroups.length;
-            int numColumns = 3;
+            int[][] selectedValues = new int[numRows][1];
 
-            int[][] resultMatrix = new int[numRows][numColumns];
-
-            for (int i = 0; i < radioGroups.length; i++) {
+            // Obtener valores seleccionados
+            for (int i = 0; i < numRows; i++) {
                 RadioGroup radioGroup = radioGroups[i][0];
                 int selectedId = radioGroup.getCheckedRadioButtonId();
-                int radioButtonCount = radioGroup.getChildCount();
+                RadioButton selectedButton = findViewById(selectedId);
+                String selectedText = selectedButton.getText().toString();
 
-                // Asignar valor a cada RadioButton en el RadioGroup
-                for (int j = 0; j < radioButtonCount; j++) {
-                    RadioButton radioButton = (RadioButton) radioGroup.getChildAt(j);
-
-                    // Si el RadioButton está seleccionado, se asigna 1, si no, se asigna 0
-                    if (radioButton.getId() == selectedId) {
-                        resultMatrix[i][j] = 1;
-                    } else {
-                        resultMatrix[i][j] = 0;
-                    }
-                }
+                // Asignar 0, 1, o -1 dependiendo de la selección (X será -1)
+                selectedValues[i][0] = selectedText.equals("X") ? -1 : Integer.parseInt(selectedText);
             }
 
-            // Convertir la matriz a una lista
+            generateKMap(numVariables, selectedValues);
+
+            /*// Convertir la matriz a una lista
             ArrayList<int[]> resultMatrixList = new ArrayList<>(Arrays.asList(resultMatrix));
 
             // Enviar la matriz a una nueva actividad
             Intent intent = new Intent(MainActivity.this, ResultActivity.class);
             intent.putExtra("resultMatrix", resultMatrixList);
             startActivity(intent);
-            Log.d("RESULT_MATRIX", java.util.Arrays.deepToString(resultMatrix));
+            Log.d("RESULT_MATRIX", java.util.Arrays.deepToString(resultMatrix));*/
         });
     }
 
@@ -141,5 +137,155 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return truthTable;
+    }
+
+    private void generateKMap(int numVariables, int[][] selectedValues) {
+        // Determinar dimensiones del K-map
+        int numRows;
+        int numCols;
+
+        switch (numVariables) {
+            case 2:
+                numRows = 2;
+                numCols = 2;
+                break;
+            case 3:
+                numRows = 2;
+                numCols = 4;
+                break;
+            case 4:
+                numRows = 4;
+                numCols = 4;
+                break;
+            case 5:
+                numRows = 4;
+                numCols = 8;
+                break;
+            case 6:
+                numRows = 8;
+                numCols = 8;
+                break;
+            case 7:
+                numRows = 8;
+                numCols = 16;
+                break;
+            default:
+                Toast.makeText(this, "Número de variables no soportado", Toast.LENGTH_SHORT).show();
+                return;
+        }
+
+        TableLayout kMapLayout = new TableLayout(this);
+        kMapLayout.setLayoutParams(new TableLayout.LayoutParams(
+                TableLayout.LayoutParams.MATCH_PARENT,
+                TableLayout.LayoutParams.WRAP_CONTENT));
+
+        // Crear fila de encabezado para las columnas
+        TableRow headerRow = new TableRow(this);
+        headerRow.addView(new TextView(this)); // Espacio para la esquina superior izquierda
+
+        // Agregar encabezados de columna
+        for (int j = 0; j < numCols; j++) {
+            TextView headerCell = new TextView(this);
+            headerCell.setText(getColumnHeader(j, numVariables)); // Obtener encabezado de columna
+            headerCell.setPadding(16, 16, 16, 16);
+            headerCell.setBackgroundResource(android.R.drawable.btn_default);
+            headerRow.addView(headerCell);
+        }
+        kMapLayout.addView(headerRow);
+
+        // Crear filas del K-map
+        for (int i = 0; i < numRows; i++) {
+            TableRow kMapRow = new TableRow(this);
+
+            // Añadir etiqueta a la izquierda para cada fila
+            TextView rowLabel = new TextView(this);
+            rowLabel.setText(getRowHeader(i, numVariables)); // Obtener encabezado de fila
+            rowLabel.setPadding(16, 16, 16, 16);
+            rowLabel.setBackgroundResource(android.R.drawable.btn_default);
+            kMapRow.addView(rowLabel);
+
+            for (int j = 0; j < numCols; j++) {
+                TextView kMapCell = new TextView(this);
+                int truthValue = getTruthValue(i, j, numVariables, selectedValues);
+                String displayValue = truthValue == -1 ? "X" : String.valueOf(truthValue);
+                kMapCell.setText(displayValue);
+                kMapCell.setPadding(16, 16, 16, 16);
+                kMapCell.setBackgroundResource(android.R.drawable.btn_default);
+                kMapCell.setLayoutParams(new TableRow.LayoutParams(
+                        TableRow.LayoutParams.WRAP_CONTENT,
+                        TableRow.LayoutParams.WRAP_CONTENT));
+                kMapRow.addView(kMapCell);
+            }
+            kMapLayout.addView(kMapRow);
+        }
+
+        LinearLayout mainLayout = findViewById(R.id.mainLayout);
+        mainLayout.removeAllViews();
+        mainLayout.addView(kMapLayout);
+    }
+
+    // Obtener encabezado de columna
+    private String getColumnHeader(int index, int numVariables) {
+        int gray = grayCode(index);
+
+        int colBits = numVariables / 2 + (numVariables % 2); // Variables para columnas
+
+        StringBuilder header = new StringBuilder();
+
+        // Generar encabezados de columna basados en las variables (poner negadas primero)
+        for (int i = colBits - 1; i >= 0; i--) {
+            char variable = (char) ('A' + (numVariables - colBits + (colBits - i - 1)));
+            if ((gray & (1 << i)) == 0) {
+                header.append(variable).append("'"); // Variable negada primero
+            } else {
+                header.append(variable); // Variable positiva
+            }
+        }
+        return header.toString();
+    }
+
+    // Obtener encabezado de fila
+    private String getRowHeader(int index, int numVariables) {
+        int gray = grayCode(index);
+
+        int rowBits = numVariables / 2; // Variables para filas
+
+        StringBuilder header = new StringBuilder();
+
+        // Generar encabezados de fila basados en las variables (poner negadas primero)
+        for (int i = rowBits - 1; i >= 0; i--) {
+            char variable = (char) ('A' + i);
+            if ((gray & (1 << i)) == 0) {
+                header.append(variable).append("'"); // Variable negada primero
+            } else {
+                header.append(variable); // Variable positiva
+            }
+        }
+        return header.toString();
+    }
+
+    private int getTruthValue(int row, int col, int numVariables, int[][] selectedValues) {
+        int numRowVariables = numVariables / 2;
+        int numColVariables = numVariables - numRowVariables;
+
+        // Obtener códigos Gray para filas y columnas
+        int rowGray = grayCode(row);
+        int colGray = grayCode(col);
+
+        // Combinar las partes de fila y columna
+        int combinedCode = (rowGray << numColVariables) | colGray;
+
+        // Validar que el índice combinado esté dentro del rango
+        if (combinedCode >= 0 && combinedCode < selectedValues.length) {
+            return selectedValues[combinedCode][0]; // Obtener el valor del K-map
+        }
+        return 0; // Valor por defecto
+    }
+
+
+    // Función para obtener el código Gray de un número
+    // Función para obtener el código Gray de un número (ajuste correcto)
+    private int grayCode(int num) {
+        return num ^ (num >> 1);  // Solo un bit de desplazamiento
     }
 }
