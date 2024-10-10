@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import android.util.Log;
+import android.widget.Space;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -140,88 +141,43 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void generateKMap(int numVariables, int[][] selectedValues) {
-        // Determinar dimensiones del K-map
+        // Validación de número de variables (se asume de 2 a 7 variables)
+        if (numVariables < 2 || numVariables > 7) {
+            Toast.makeText(this, "Número de variables no soportado", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Determinar dimensiones del K-map según el número de variables
         int numRows;
         int numCols;
 
-        switch (numVariables) {
-            case 2:
-                numRows = 2;
-                numCols = 2;
-                break;
-            case 3:
-                numRows = 2;
-                numCols = 4;
-                break;
-            case 4:
-                numRows = 4;
-                numCols = 4;
-                break;
-            case 5:
-                numRows = 4;
-                numCols = 8;
-                break;
-            case 6:
-                numRows = 8;
-                numCols = 8;
-                break;
-            case 7:
-                numRows = 8;
-                numCols = 16;
-                break;
-            default:
-                Toast.makeText(this, "Número de variables no soportado", Toast.LENGTH_SHORT).show();
-                return;
-        }
-
-        TableLayout kMapLayout = new TableLayout(this);
-        kMapLayout.setLayoutParams(new TableLayout.LayoutParams(
-                TableLayout.LayoutParams.MATCH_PARENT,
-                TableLayout.LayoutParams.WRAP_CONTENT));
-
-        // Crear fila de encabezado para las columnas
-        TableRow headerRow = new TableRow(this);
-        headerRow.addView(new TextView(this)); // Espacio para la esquina superior izquierda
-
-        // Agregar encabezados de columna
-        for (int j = 0; j < numCols; j++) {
-            TextView headerCell = new TextView(this);
-            headerCell.setText(getColumnHeader(j, numVariables)); // Obtener encabezado de columna
-            headerCell.setPadding(16, 16, 16, 16);
-            headerCell.setBackgroundResource(android.R.drawable.btn_default);
-            headerRow.addView(headerCell);
-        }
-        kMapLayout.addView(headerRow);
-
-        // Crear filas del K-map
-        for (int i = 0; i < numRows; i++) {
-            TableRow kMapRow = new TableRow(this);
-
-            // Añadir etiqueta a la izquierda para cada fila
-            TextView rowLabel = new TextView(this);
-            rowLabel.setText(getRowHeader(i, numVariables)); // Obtener encabezado de fila
-            rowLabel.setPadding(16, 16, 16, 16);
-            rowLabel.setBackgroundResource(android.R.drawable.btn_default);
-            kMapRow.addView(rowLabel);
-
-            for (int j = 0; j < numCols; j++) {
-                TextView kMapCell = new TextView(this);
-                int truthValue = getTruthValue(i, j, numVariables, selectedValues);
-                String displayValue = truthValue == -1 ? "X" : String.valueOf(truthValue);
-                kMapCell.setText(displayValue);
-                kMapCell.setPadding(16, 16, 16, 16);
-                kMapCell.setBackgroundResource(android.R.drawable.btn_default);
-                kMapCell.setLayoutParams(new TableRow.LayoutParams(
-                        TableRow.LayoutParams.WRAP_CONTENT,
-                        TableRow.LayoutParams.WRAP_CONTENT));
-                kMapRow.addView(kMapCell);
-            }
-            kMapLayout.addView(kMapRow);
+        if (numVariables % 2 == 0) {
+            numRows = (int) Math.pow(2, numVariables / 2); // Variables para las filas
+            numCols = (int) Math.pow(2, numVariables / 2); // Variables para las columnas
+        } else {
+            numRows = (int) Math.pow(2, numVariables / 2); // Variables para las filas
+            numCols = (int) Math.pow(2, (numVariables / 2) + 1); // Variables para las columnas
         }
 
         LinearLayout mainLayout = findViewById(R.id.mainLayout);
         mainLayout.removeAllViews();
+
+        // Crear el mapa de Karnaugh (Map)
+        TableLayout kMapLayout = createKMapTable(numRows, numCols, numVariables, selectedValues, false);
+
+        // Crear el layout del mapa (Map Layout) - mostrando índices
+        TableLayout mapLayoutTable = createKMapTable(numRows, numCols, numVariables, selectedValues, true);
+
+        // Añadir ambos mapas al layout principal
         mainLayout.addView(kMapLayout);
+
+        // Espacio entre ambos mapas
+        Space space = new Space(this);
+        space.setMinimumHeight(50); // Ajusta la altura del espacio si es necesario
+        mainLayout.addView(space);
+
+        // Añadir layout del mapa
+        mainLayout.addView(mapLayoutTable);
     }
 
     // Obtener encabezado de columna
@@ -287,5 +243,67 @@ public class MainActivity extends AppCompatActivity {
     // Función para obtener el código Gray de un número (ajuste correcto)
     private int grayCode(int num) {
         return num ^ (num >> 1);  // Solo un bit de desplazamiento
+    }
+
+    // Método para crear la tabla del mapa de Karnaugh o el layout del mapa
+    private TableLayout createKMapTable(int numRows, int numCols, int numVariables, int[][] selectedValues, boolean isMapLayout) {
+        TableLayout tableLayout = new TableLayout(this);
+        tableLayout.setLayoutParams(new TableLayout.LayoutParams(
+                TableLayout.LayoutParams.MATCH_PARENT,
+                TableLayout.LayoutParams.WRAP_CONTENT));
+
+        // Crear fila de encabezado para las columnas
+        TableRow headerRow = new TableRow(this);
+        headerRow.addView(new TextView(this)); // Espacio para la esquina superior izquierda
+
+        // Agregar encabezados de columna (Ejemplo: B'C', BC', etc.)
+        for (int j = 0; j < numCols; j++) {
+            TextView headerCell = new TextView(this);
+            headerCell.setText(getColumnHeader(j, numVariables)); // Obtener encabezado de columna
+            headerCell.setPadding(16, 16, 16, 16);
+            headerRow.addView(headerCell);
+        }
+        tableLayout.addView(headerRow);
+
+        // Crear filas del mapa
+        for (int i = 0; i < numRows; i++) {
+            TableRow kMapRow = new TableRow(this);
+
+            // Añadir etiqueta a la izquierda para cada fila (Ejemplo: A', A, etc.)
+            TextView rowLabel = new TextView(this);
+            rowLabel.setText(getRowHeader(i, numVariables)); // Obtener encabezado de fila
+            rowLabel.setPadding(16, 16, 16, 16);
+            kMapRow.addView(rowLabel);
+
+            // Agregar celdas con valores
+            for (int j = 0; j < numCols; j++) {
+                TextView kMapCell = new TextView(this);
+
+                if (isMapLayout) {
+                    // Mostrar el índice binario/gray correspondiente
+                    int index = getMapLayoutIndex(i, j, numVariables);
+                    kMapCell.setText(String.valueOf(index));
+                } else {
+                    // Mostrar los valores seleccionados por el usuario (0, 1 o X)
+                    int truthValue = getTruthValue(i, j, numVariables, selectedValues);
+                    String displayValue = truthValue == -1 ? "X" : String.valueOf(truthValue);
+                    kMapCell.setText(displayValue);
+                }
+
+                kMapCell.setPadding(16, 16, 16, 16);
+                kMapCell.setBackgroundResource(android.R.drawable.btn_default);
+                kMapRow.addView(kMapCell);
+            }
+
+            tableLayout.addView(kMapRow);
+        }
+
+        return tableLayout;
+    }
+
+    // Método para obtener el índice del layout del mapa
+    private int getMapLayoutIndex(int row, int col, int numVariables) {
+        // Generar el índice correspondiente a la celda (usa códigos Gray si es necesario)
+        return row * (int) Math.pow(2, (numVariables / 2) + (numVariables % 2)) + col;
     }
 }
