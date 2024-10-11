@@ -409,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
         space.setMinimumHeight(50); // Ajusta la altura del espacio si es necesario
         mainLayout.addView(space);
         simplifyKMap(kMapLayout, numRows, numCols, numVariables, selectedValues);
-        
+
         // Añadir layout del mapa
         mainLayout.addView(mapLayoutTable);
 

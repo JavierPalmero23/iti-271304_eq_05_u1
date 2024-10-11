@@ -17,7 +17,6 @@ public class CustomDrawingView extends View {
     static int CONTEXT_HEIGHT;
     private int gateCount;
 
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         // Calcular el tamaño del contenido basado en la cantidad de compuertas y el espaciado
@@ -65,8 +64,8 @@ public class CustomDrawingView extends View {
         int width = CONTEXT_WIDTH;
         int height = CONTEXT_HEIGHT;
 
-        int gateSpacing = 10;
-        float startY = (height - ((GATE_HEIGHT + gateSpacing) * gateCount - gateSpacing)) / 2f; // Para centrar verticalmente
+        int gateSpacing = 100;
+        float initialY = (height - ((GATE_HEIGHT + gateSpacing) * gateCount - gateSpacing)) / 2f; // Para centrar verticalmente
 
         // Variables para guardar las posiciones previas de las compuertas
         float prevXPos = 0;
@@ -87,7 +86,8 @@ public class CustomDrawingView extends View {
                 isLeft = false;
             }
 
-            float yPos = startY + i * (GATE_HEIGHT + gateSpacing);
+            // Calcular la posición Y de la compuerta actual
+            float yPos = initialY + i * (GATE_HEIGHT + gateSpacing);
 
             // Alternar colores para las compuertas AND y OR
             Paint gatePaint = new Paint(paint); // Crear una copia del Paint original
@@ -109,7 +109,7 @@ public class CustomDrawingView extends View {
 
                 // Punto de inicio: lado izquierdo de la compuerta anterior
                 float startX = prevIsLeft ? prevXPos + GATE_WIDTH : prevXPos;
-                startY = prevYPos + GATE_HEIGHT / 2; // yeaperdonen kamehameha
+                float startY = prevYPos + GATE_HEIGHT / 2; // Posición Y del punto de inicio
 
                 // Punto de fin: lado izquierdo de la compuerta actual
                 float endX = isLeft ? xPos + GATE_WIDTH : xPos;
