@@ -2,21 +2,20 @@ package com.z_iti_271304_u1_e5;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 
-public class GateBitmap extends CustomBitmap {
+public class ANDGateBitmap extends CustomBitmap {
 
-    public GateBitmap() {
+    public ANDGateBitmap() {
         super();
     }
 
-    public GateBitmap(Paint paint) {
+    public ANDGateBitmap(Paint paint) {
         super(paint);
     }
 
-    public GateBitmap(int color, float strokeWidth, Paint.Style style) {
+    public ANDGateBitmap(int color, float strokeWidth, Paint.Style style) {
         super(color, strokeWidth, style);
     }
 
