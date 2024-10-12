@@ -1,6 +1,7 @@
 package com.z_iti_271304_u1_e5;
 
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.os.Bundle;
 
 import android.util.Log;
@@ -16,13 +17,19 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private RadioGroup[][] radioGroups;
+    private List<Group> groups = new ArrayList<>();
+    private int[] colors = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.CYAN, Color.MAGENTA};
+    TextView simplificationTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
         TableLayout tableLayout = findViewById(R.id.tableLayout);
         Button btnGenerate = findViewById(R.id.btnGenerate);
         EditText etNumVariables = findViewById(R.id.etNumVariables);
-
+        simplificationTextView = findViewById(R.id.simplificationTextView);
         btnGenerate.setOnClickListener(v -> {
             int numVariables;
             try {
@@ -54,6 +61,11 @@ public class MainActivity extends AppCompatActivity {
 
             int[][] truthTable = generateTruthTable(numVariables);
 
+            // Prueba para verificar si el scroll funciona correctamente con 7 variables
+            if (numVariables == 7) {
+                Toast.makeText(this, "Desplazamiento habilitado para 7 variables", Toast.LENGTH_SHORT).show();
+            }
+
             // Crear filas y columnas
             for (int i = 0; i < numRows; i++) {
                 TableRow tableRow = new TableRow(this);
@@ -70,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
                 RadioGroup radioGroup = new RadioGroup(this);
                 radioGroup.setOrientation(RadioGroup.HORIZONTAL);
 
-                // Los Ids únicos evitan que se seleccionen varios RadioButtons a la vez
                 RadioButton radioButton0 = new RadioButton(this);
                 radioButton0.setText("0");
                 radioButton0.setId(View.generateViewId());
@@ -94,10 +105,14 @@ public class MainActivity extends AppCompatActivity {
                 tableLayout.addView(tableRow);
             }
         });
+
         Button btnCalcular = findViewById(R.id.btnCalcular);
 
         btnCalcular.setOnClickListener(v -> {
             int numVariables = Integer.parseInt(etNumVariables.getText().toString());
+
+            simplificationTextView = findViewById(R.id.simplificationTextView);
+            simplificationTextView.setText("");
 
             // Dimensiones de la matriz
             int numRows = radioGroups.length;
@@ -140,6 +155,224 @@ public class MainActivity extends AppCompatActivity {
         return truthTable;
     }
 
+    // Método para generar la expresión booleana (Suma de Productos)
+    private String generateBooleanExpression(int[][] selectedValues, int numVariables) {
+        StringBuilder expression = new StringBuilder();
+
+        // Iterar sobre las celdas seleccionadas
+        for (int i = 0; i < selectedValues.length; i++) {
+            if (selectedValues[i][0] == 1) { // Solo considerar los valores de "1"
+                StringBuilder term = new StringBuilder();
+
+                // Obtener las variables de fila y columna
+                int rowBits = numVariables / 2;
+                int colBits = numVariables - rowBits;
+
+                // Variables de fila
+                for (int j = rowBits - 1; j >= 0; j--) {
+                    char variable = (char) ('A' + j);
+                    if ((i & (1 << j)) == 0) {
+                        term.append(variable).append("'"); // Variable negada
+                    } else {
+                        term.append(variable); // Variable positiva
+                    }
+                }
+
+                // Variables de columna
+                for (int j = colBits - 1; j >= 0; j--) {
+                    char variable = (char) ('A' + (rowBits + j));
+                    if ((i & (1 << j)) == 0) {
+                        term.append(variable).append("'"); // Variable negada
+                    } else {
+                        term.append(variable); // Variable positiva
+                    }
+                }
+
+                // Agregar el término a la expresión completa
+                if (expression.length() > 0) {
+                    expression.append(" + ");
+                }
+                expression.append(term.toString());
+            }
+        }
+
+        return expression.toString().isEmpty() ? "0" : expression.toString(); // Retorna la expresión
+    }
+
+    private void simplifyKMap(TableLayout kMapLayout, int numRows, int numCols, int numVariables, int[][] selectedValues) {
+        // En lugar de borrar grupos, crearemos una nueva lista para esta simplificación
+        List<Group> newGroups = new ArrayList<>();
+        findGroups(numRows, numCols, numVariables, selectedValues, newGroups);
+
+        // Agrega los nuevos grupos a los grupos existentes
+        groups.addAll(newGroups);
+
+        drawGroups(kMapLayout, numRows, numCols);
+        displaySimplifiedExpression(numVariables);
+    }
+
+    private void findGroups(int numRows, int numCols, int numVariables, int[][] selectedValues, List<Group> newGroups) {
+        boolean[][] covered = new boolean[numRows][numCols];
+
+
+        // Buscar grupos de tamaño 8 (si es posible)
+        if (numRows * numCols >= 8) {
+            findGroupsOfSize(numRows, numCols, numVariables, selectedValues, covered, 8);
+        }
+
+        // Buscar grupos de tamaño 4
+        findGroupsOfSize(numRows, numCols, numVariables, selectedValues, covered, 4);
+
+        // Buscar grupos de tamaño 2
+        findGroupsOfSize(numRows, numCols, numVariables, selectedValues, covered, 2);
+
+        // Buscar grupos de tamaño 1 (celdas individuales)
+        findGroupsOfSize(numRows, numCols, numVariables, selectedValues, covered, 1);
+    }
+
+    private void findGroupsOfSize(int numRows, int numCols, int numVariables, int[][] selectedValues, boolean[][] covered, int groupSize) {
+        for (int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numCols; j++) {
+                if (!covered[i][j] && isValidGroup(i, j, numRows, numCols, numVariables, selectedValues, groupSize)) {
+                    addGroup(i, j, numRows, numCols, groupSize);
+                    markAsCovered(i, j, numRows, numCols, covered, groupSize);
+                }
+            }
+        }
+    }
+
+    private boolean isValidGroup(int startRow, int startCol, int numRows, int numCols, int numVariables, int[][] selectedValues, int groupSize) {
+        int height = (groupSize == 8) ? 4 : (groupSize == 4) ? 2 : 1;
+        int width = groupSize / height;
+
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int row = (startRow + i) % numRows;
+                int col = (startCol + j) % numCols;
+                if (getTruthValue(row, col, numVariables, selectedValues) != 1) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private void addGroup(int startRow, int startCol, int numRows, int numCols, int groupSize) {
+        int height = (groupSize == 8) ? 4 : (groupSize == 4) ? 2 : 1;
+        int width = groupSize / height;
+        groups.add(new Group(startRow, startCol, width, height));
+    }
+
+    private void markAsCovered(int startRow, int startCol, int numRows, int numCols, boolean[][] covered, int groupSize) {
+        int height = (groupSize == 8) ? 4 : (groupSize == 4) ? 2 : 1;
+        int width = groupSize / height;
+
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int row = (startRow + i) % numRows;
+                int col = (startCol + j) % numCols;
+                covered[row][col] = true;
+            }
+        }
+    }
+    private void drawGroups(TableLayout kMapLayout, int numRows, int numCols) {
+        // Borrar fondos existentes
+        for (int i = 1; i <= numRows; i++) {
+            TableRow row = (TableRow) kMapLayout.getChildAt(i);
+            for (int j = 1; j <= numCols; j++) {
+                View cell = row.getChildAt(j);
+                cell.setBackground(null);
+            }
+        }
+
+        //dibujar todos los grupos
+        for (int i = 0; i < groups.size(); i++) {
+            Group group = groups.get(i);
+            int color = colors[i % colors.length];
+
+            for (int row = 0; row < group.height; row++) {
+                for (int col = 0; col < group.width; col++) {
+                    int actualRow = (group.startRow + row) % numRows;
+                    int actualCol = (group.startCol + col) % numCols;
+
+                    TableRow tableRow = (TableRow) kMapLayout.getChildAt(actualRow + 1);
+                    View cell = tableRow.getChildAt(actualCol + 1);
+
+                    addBorderToCell(cell, color, row, col, group.height, group.width);
+                }
+            }
+        }
+    }
+
+    private void addBorderToCell(View cell, int color, int row, int col, int height, int width) {
+        GradientDrawable newBorder = new GradientDrawable();
+        newBorder.setStroke(2, color);
+        float[] radii = new float[8];
+        if (row == 0 && col == 0) radii[0] = radii[1] = 8f;
+        if (row == 0 && col == width - 1) radii[2] = radii[3] = 8f;
+        if (row == height - 1 && col == 0) radii[6] = radii[7] = 8f;
+        if (row == height - 1 && col == width - 1) radii[4] = radii[5] = 8f;
+        newBorder.setCornerRadii(radii);
+
+        if (cell.getBackground() != null) {
+            android.graphics.drawable.Drawable[] layers = {cell.getBackground(), newBorder};
+            android.graphics.drawable.LayerDrawable layerDrawable = new android.graphics.drawable.LayerDrawable(layers);
+            cell.setBackground(layerDrawable);
+        } else {
+            cell.setBackground(newBorder);
+        }
+    }
+    private void displaySimplifiedExpression(int numVariables) {
+        StringBuilder expression = new StringBuilder();
+        for (Group group : groups) {
+            expression.append(getTermForGroup(group, numVariables)).append(" + ");
+        }
+        if (expression.length() > 0) {
+            expression.setLength(expression.length() - 3);
+        }
+
+        simplificationTextView.setText("y = " + expression);
+    }
+
+    private String getTermForGroup(Group group, int numVariables) {
+        StringBuilder term = new StringBuilder();
+        boolean[] dontCare = new boolean[numVariables];
+
+        //Determinar qué variables no interesan a este grupo
+        for (int i = 0; i < numVariables; i++) {
+            int size = (i < numVariables / 2) ? group.height : group.width;
+            dontCare[i] = (size == 2 || size == 4);
+        }
+
+        // construir el término
+        for (int i = 0; i < numVariables; i++) {
+            if (!dontCare[i]) {
+                char variable = (char) ('A' + i);
+                boolean isNegated = (i < numVariables / 2) ?
+                        (group.startRow & (1 << (numVariables / 2 - 1 - i))) == 0 :
+                        (group.startCol & (1 << (numVariables - 1 - i))) == 0;
+                if (isNegated) {
+                    term.append(variable).append("'");
+                } else {
+                    term.append(variable);
+                }
+            }
+        }
+
+        return term.length() > 0 ? term.toString() : "1";
+    }
+
+    private static class Group {
+        int startRow, startCol, width, height;
+
+        Group(int startRow, int startCol, int width, int height) {
+            this.startRow = startRow;
+            this.startCol = startCol;
+            this.width = width;
+            this.height = height;
+        }
+    }
+
     private void generateKMap(int numVariables, int[][] selectedValues) {
         // Validación de número de variables (se asume de 2 a 7 variables)
         if (numVariables < 2 || numVariables > 7) {
@@ -175,9 +408,41 @@ public class MainActivity extends AppCompatActivity {
         Space space = new Space(this);
         space.setMinimumHeight(50); // Ajusta la altura del espacio si es necesario
         mainLayout.addView(space);
+        simplifyKMap(kMapLayout, numRows, numCols, numVariables, selectedValues);
 
         // Añadir layout del mapa
         mainLayout.addView(mapLayoutTable);
+
+        /*
+        String booleanExpression = generateBooleanExpression(selectedValues, numVariables);
+
+        // Mostrar la expresión en pantalla
+        TextView expressionTextView = new TextView(this);
+        expressionTextView.setText("y = " + booleanExpression);
+        expressionTextView.setTextSize(18);
+        expressionTextView.setTypeface(null, Typeface.BOLD);
+        expressionTextView.setPadding(16, 16, 16, 16);
+        mainLayout.addView(expressionTextView);*/
+
+        // Crear botón para mostrar el resultado en una nueva actividad
+        Button resultButton = new Button(this);
+        resultButton.setText("Mostrar resultado");
+        resultButton.setPadding(16, 16, 16, 16);
+
+        // Configurar el evento onClick para el botón
+        resultButton.setOnClickListener(new View.OnClickListener() {
+            String booleanExpression = simplificationTextView.getText().toString();
+
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, ResultActivity.class);
+                intent.putExtra("BOOLEAN_EXPRESSION", booleanExpression);
+                startActivity(intent);
+            }
+        });
+
+        // Añadir el botón al layout principal
+        mainLayout.addView(resultButton);
     }
 
     // Obtener encabezado de columna
@@ -240,7 +505,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     // Función para obtener el código Gray de un número
-    // Función para obtener el código Gray de un número (ajuste correcto)
     private int grayCode(int num) {
         return num ^ (num >> 1);  // Solo un bit de desplazamiento
     }
@@ -306,4 +570,6 @@ public class MainActivity extends AppCompatActivity {
         // Generar el índice correspondiente a la celda (usa códigos Gray si es necesario)
         return row * (int) Math.pow(2, (numVariables / 2) + (numVariables % 2)) + col;
     }
+
+
 }
