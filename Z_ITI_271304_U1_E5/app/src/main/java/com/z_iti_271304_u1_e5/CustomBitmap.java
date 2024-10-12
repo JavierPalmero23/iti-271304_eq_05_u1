@@ -32,5 +32,5 @@ public abstract class CustomBitmap {
      * @param height Alto del bitmap
      * @return Bitmap
      */
-    public abstract Bitmap getBitmap(int width, int height);
+    public abstract Bitmap getBitmap(int width, int height, String[] labels);
 }
